@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-clientes}
+      POSTGRES_USER: ${POSTGRES_USER:-clientes}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-clientes}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - datos_clientes:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-clientes} -d ${POSTGRES_DB:-clientes}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-clientes}
+      DB_USER: ${POSTGRES_USER:-clientes}
+      DB_PASSWORD: ${DB_PASSWORD:-clientes}
+      CORS_ALLOWED_ORIGIN: http://localhost:${FRONTEND_PORT:-8081}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-8081}:80"
+    depends_on:
+      - api
+
+volumes:
+  datos_clientes:
